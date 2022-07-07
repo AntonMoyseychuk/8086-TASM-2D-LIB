@@ -1,10 +1,3 @@
-;+------------------------------------------------------+
-;| PONG GAME					        |
-;| Writen by: Anton Moyseychuk (moyseychuk2017@mail.ru) |
-;| TASM 8086					        |
-;| OS: DOS						|
-;+------------------------------------------------------+
-
 .286
 .model small
 .stack 100h
@@ -20,6 +13,8 @@
 		m_lColor db ?
 	line_t ends
 	
+	_temp_line line_t <>
+	
 	circle_t struc
 		m_xCent dw ?
 		m_yCent dw ?
@@ -30,7 +25,7 @@
 	circle_t ends
 	
 	rect_t struc
-		m_x dw ? 	;Upper left corner position
+		m_x dw ?		;Upper left corner position
 		m_y dw ?
 		
 		m_length dw ?
@@ -40,7 +35,7 @@
 	rect_t ends
 	
 	line line_t <10, 10, 310, 190, 01h>
-	rect rect_t <10, 10, 50, 25, 0Bh>
+	rect rect_t <10, 10, 74, 75, 0Bh>
 	
 .code
 	__set_video_mode macro mode
@@ -60,7 +55,7 @@
 		mov dx, y
 		mov al, colour
 		
-		mov bh, 0 				;Video page number
+		mov bh, 0		;Video page number
 		
 		mov ah, 0Ch		
 		int 10h
@@ -110,7 +105,6 @@
 		
 		update_loop:
 			lea di, rect
-			lea si, line
 			call print_rect
 			inc [di].m_rColor
 			
@@ -130,7 +124,7 @@
 		int 21h
 	endp	
 	
-	print_line proc ;(di <- line_t)
+	print_line proc				;(di <- line_t)
 		pusha
 		pushf
 		__push_line__ di
@@ -145,13 +139,13 @@
 		cmp ax, 0
 		je zero_deltaX
 		jl abs_deltaX
-		mov dx, 1				;dx <- xInc
+		mov dx, 1			;dx <- xInc
 		
 		deltaY_check:
 		cmp bx, 0
 		je zero_deltaY
 		jl abs_deltaY
-		mov si, 1				;si <- yInc
+		mov si, 1			;si <- yInc
 		jmp correct_args
 		
 		zero_deltaX:
@@ -159,7 +153,7 @@
 			jmp deltaY_check
 		
 		abs_deltaX:
-			neg ax				;ax <- |deltaX|
+			neg ax			;ax <- |deltaX|
 			mov dx, -1
 			jmp deltaY_check
 		
@@ -168,7 +162,7 @@
 			jmp correct_args
 			
 		abs_deltaY:
-			neg bx				;bx <- |deltaY|
+			neg bx			;bx <- |deltaY|
 			mov si, -1
 		
 		correct_args:
@@ -179,7 +173,7 @@
 			DX_greater_DY:
 				mov cx, bx
 				add cx, bx
-				sub cx, ax		;cx = coeff = 2 * deltaY - deltaX
+				sub cx, ax	;cx <- coeff = 2 * deltaY - deltaX
 			
 				l1:
 					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
@@ -192,7 +186,7 @@
 					
 					coeff_less_zero_l1:
 						add cx, bx
-						add cx, bx			;coeff += 2 * deltaY
+						add cx, bx		;coeff += 2 * deltaY
 						jmp check_updatep_condition_l1
 						
 					coeff_greater_or_equal_zero_l1:
@@ -201,7 +195,7 @@
 						add cx, bx
 						add cx, bx
 						sub cx, ax
-						sub cx, ax			;coeff += 2 * (deltaY - deltaX)
+						sub cx, ax		;coeff += 2 * (deltaY - deltaX)
 						jmp check_updatep_condition_l1
 					
 				check_updatep_condition_l1:
@@ -215,7 +209,7 @@
 			DX_less_DY:
 				mov cx, ax
 				add cx, ax
-				sub cx, bx					;coeff = 2 * deltaX - deltaY
+				sub cx, bx				;cx <- coeff = 2 * deltaX - deltaY
 				
 				l2:
 					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
@@ -228,7 +222,7 @@
 					
 					coeff_less_zero_l2:
 						add cx, ax
-						add cx, ax			;coeff += 2 * deltaX
+						add cx, ax		;coeff += 2 * deltaX
 						jmp check_updatep_condition_l2
 						
 					coeff_greater_or_equal_zero_l2:
@@ -237,7 +231,7 @@
 						add cx, ax
 						add cx, ax
 						sub cx, bx
-						sub cx, bx			;coeff += 2 * (deltaY - deltaX)
+						sub cx, bx		;coeff += 2 * (deltaY - deltaX)
 						jmp check_updatep_condition_l2
 					
 				check_updatep_condition_l2:
@@ -257,24 +251,25 @@
 	print_line endp
 	
 	
-	print_rect proc ;(di <- rect_t, si <- line_t)
+	print_rect proc ;(di <- rect_t)
 		pusha
 		pushf
 		__push_rect__ di
-		__push_line__ si
+		
+		lea si, _temp_line
 		
 		mov al, [di].m_rColor
 		mov [si].m_lColor, al			;line_t.color = rect_t.color
 		
 		mov ax, [di].m_y			
-		mov [si].m_y0, ax				;line_t.m_y0 = rect_t.m_y
+		mov [si].m_y0, ax			;line_t.m_y0 = rect_t.m_y
 		
 		add ax, [di].m_height		
-		mov [si].m_yEnd, ax				;line_t.m_yEnd = rect_t.m_y + rect_t.m_height
+		mov [si].m_yEnd, ax			;line_t.m_yEnd = rect_t.m_y + rect_t.m_height
 		
 		mov ax, [di].m_x
-		mov [si].m_x0, ax				;line_t.m_x0 = rect_t.m_x
-		mov [si].m_xEnd, ax				;line_t.m_xEnd = line_t.m_x0 = rect_t.m_x
+		mov [si].m_x0, ax			;line_t.m_x0 = rect_t.m_x
+		mov [si].m_xEnd, ax			;line_t.m_xEnd = line_t.m_x0 = rect_t.m_x
 		
 		xchg si, di
 		mov cx, [si].m_length
@@ -288,7 +283,6 @@
 			
 		xchg si, di
 		
-		__pop_line__ si
 		__pop_rect__ di
 		popf
 		popa
