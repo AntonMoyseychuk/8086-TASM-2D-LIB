@@ -34,8 +34,9 @@
 		m_rColor db ?
 	rect_t ends
 	
-	line line_t <10, 10, 310, 190, 01h>
-	rect rect_t <10, 10, 74, 75, 0Bh>
+	line line_t <10, 10, 110, 110, 01h>
+	rect1 rect_t <10, 10, 100, 100, 05h>
+	rect2 rect_t <12, 12, 40, 40, 0Ah>
 	
 .code
 	__set_video_mode macro mode
@@ -104,7 +105,13 @@
 		
 		
 		update_loop:
-			lea di, rect
+			lea di, rect1
+			mov si, 0
+			call print_rect
+			inc [di].m_rColor
+			
+			lea di, rect2
+			mov si, 1
 			call print_rect
 			inc [di].m_rColor
 			
@@ -124,7 +131,7 @@
 		int 21h
 	endp	
 	
-	print_line proc				;(di <- line_t)
+	print_line proc		;(di <- line_t)
 		pusha
 		pushf
 		__push_line__ di
@@ -139,13 +146,13 @@
 		cmp ax, 0
 		je zero_deltaX
 		jl abs_deltaX
-		mov dx, 1			;dx <- xInc
+		mov dx, 1				;dx <- xInc
 		
 		deltaY_check:
 		cmp bx, 0
 		je zero_deltaY
 		jl abs_deltaY
-		mov si, 1			;si <- yInc
+		mov si, 1				;si <- yInc
 		jmp correct_args
 		
 		zero_deltaX:
@@ -153,7 +160,7 @@
 			jmp deltaY_check
 		
 		abs_deltaX:
-			neg ax			;ax <- |deltaX|
+			neg ax				;ax <- |deltaX|
 			mov dx, -1
 			jmp deltaY_check
 		
@@ -162,7 +169,7 @@
 			jmp correct_args
 			
 		abs_deltaY:
-			neg bx			;bx <- |deltaY|
+			neg bx				;bx <- |deltaY|
 			mov si, -1
 		
 		correct_args:
@@ -173,12 +180,12 @@
 			DX_greater_DY:
 				mov cx, bx
 				add cx, bx
-				sub cx, ax	;cx <- coeff = 2 * deltaY - deltaX
+				sub cx, ax		;cx <- coeff = 2 * deltaY - deltaX
 			
 				l1:
 					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
 					
-					add [di].m_x0, dx		;x += xInc
+					add [di].m_x0, dx	;x += xInc
 			
 					cmp cx, 0
 					jl coeff_less_zero_l1
@@ -214,7 +221,7 @@
 				l2:
 					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
 					
-					add [di].m_y0, si		;y += yInc
+					add [di].m_y0, si	;y += yInc
 			
 					cmp cx, 0
 					jl coeff_less_zero_l2
@@ -251,38 +258,73 @@
 	print_line endp
 	
 	
-	print_rect proc ;(di <- rect_t)
+	print_rect proc ;(di <- rect_t, si <- fill_flag)
 		pusha
 		pushf
 		__push_rect__ di
 		
-		lea si, _temp_line
+		mov cx, si						;cx <- fill_flag
 		
+		lea si, _temp_line				;si <- _temp_line ptr
+			
 		mov al, [di].m_rColor
 		mov [si].m_lColor, al			;line_t.color = rect_t.color
-		
+			
 		mov ax, [di].m_y			
-		mov [si].m_y0, ax			;line_t.m_y0 = rect_t.m_y
-		
+		mov [si].m_y0, ax				;line_t.m_y0 = rect_t.m_y
+			
 		add ax, [di].m_height		
-		mov [si].m_yEnd, ax			;line_t.m_yEnd = rect_t.m_y + rect_t.m_height
-		
+		mov [si].m_yEnd, ax				;line_t.m_yEnd = rect_t.m_y + rect_t.m_height
+			
 		mov ax, [di].m_x
-		mov [si].m_x0, ax			;line_t.m_x0 = rect_t.m_x
-		mov [si].m_xEnd, ax			;line_t.m_xEnd = line_t.m_x0 = rect_t.m_x
+		mov [si].m_x0, ax				;line_t.m_x0 = rect_t.m_x
+		mov [si].m_xEnd, ax				;line_t.m_xEnd = line_t.m_x0 = rect_t.m_x
 		
-		xchg si, di
-		mov cx, [si].m_length
-		rect_printing_loop:
-			call print_line
-			
-			inc [di].m_x0 
-			inc [di].m_xEnd
-			
-			loop rect_printing_loop
-			
-		xchg si, di
+		cmp cx, 0						;check fill_flag != 0
+		jne filled_rect
 		
+		not_filled_rect:
+			xchg si, di
+			
+			call print_line				;printing left border
+			
+			mov ax, [si].m_length
+			add [di].m_x0, ax
+			mov ax, [di].m_yEnd
+			mov [di].m_y0, ax
+			call print_line				;printing bottom border
+			
+			mov ax, [si].m_height
+			sub [di].m_yEnd, ax
+			mov ax, [si].m_length
+			add [di].m_xEnd, ax
+			call print_line				;printing right border
+			
+			sub [di].m_x0, ax
+			mov ax, [si].m_height
+			sub [di].m_y0, ax
+			call print_line				;printing top border
+			
+			xchg si, di
+			
+			jmp print_rect_end
+		
+		filled_rect:
+			
+			xchg si, di
+			mov cx, [si].m_length
+			rect_printing_loop:
+				call print_line
+				
+				inc [di].m_x0 
+				inc [di].m_xEnd
+				
+				loop rect_printing_loop
+				
+			xchg si, di
+		
+		
+		print_rect_end:
 		__pop_rect__ di
 		popf
 		popa
