@@ -48,12 +48,12 @@
 		pop ax
 	endm
 	
-	__set_pixel macro x, y, colour
+	__set_pixel macro x, y, color
 		pusha
 		
 		mov cx, x
 		mov dx, y
-		mov al, colour
+		mov al, color
 		
 		mov bh, 0		;Video page number
 		
