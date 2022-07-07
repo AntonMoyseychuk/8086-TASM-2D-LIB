@@ -25,7 +25,7 @@
 	circle_t ends
 	
 	rect_t struc
-		m_x dw ?		;Upper left corner position
+		m_x dw ?	;Upper left corner position
 		m_y dw ?
 		
 		m_length dw ?
@@ -56,7 +56,7 @@
 		mov dx, y
 		mov al, color
 		
-		mov bh, 0		;Video page number
+		mov bh, 0	;Video page number
 		
 		mov ah, 0Ch		
 		int 10h
@@ -137,22 +137,22 @@
 		__push_line__ di
 		
 		mov ax, [di].m_xEnd
-		sub ax, [di].m_x0		;ax <- deltaX
+		sub ax, [di].m_x0	;ax <- deltaX
 		
 		mov bx, [di].m_yEnd
-		sub bx, [di].m_y0		;bx <- deltaY
+		sub bx, [di].m_y0	;bx <- deltaY
 		
 		
 		cmp ax, 0
 		je zero_deltaX
 		jl abs_deltaX
-		mov dx, 1				;dx <- xInc
+		mov dx, 1		;dx <- xInc
 		
 		deltaY_check:
 		cmp bx, 0
 		je zero_deltaY
 		jl abs_deltaY
-		mov si, 1				;si <- yInc
+		mov si, 1		;si <- yInc
 		jmp correct_args
 		
 		zero_deltaX:
@@ -160,7 +160,7 @@
 			jmp deltaY_check
 		
 		abs_deltaX:
-			neg ax				;ax <- |deltaX|
+			neg ax		;ax <- |deltaX|
 			mov dx, -1
 			jmp deltaY_check
 		
@@ -169,7 +169,7 @@
 			jmp correct_args
 			
 		abs_deltaY:
-			neg bx				;bx <- |deltaY|
+			neg bx		;bx <- |deltaY|
 			mov si, -1
 		
 		correct_args:
@@ -180,7 +180,7 @@
 			DX_greater_DY:
 				mov cx, bx
 				add cx, bx
-				sub cx, ax		;cx <- coeff = 2 * deltaY - deltaX
+				sub cx, ax	;cx <- coeff = 2 * deltaY - deltaX
 			
 				l1:
 					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
@@ -216,7 +216,7 @@
 			DX_less_DY:
 				mov cx, ax
 				add cx, ax
-				sub cx, bx				;cx <- coeff = 2 * deltaX - deltaY
+				sub cx, bx	;cx <- coeff = 2 * deltaX - deltaY
 				
 				l2:
 					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
@@ -229,7 +229,7 @@
 					
 					coeff_less_zero_l2:
 						add cx, ax
-						add cx, ax		;coeff += 2 * deltaX
+						add cx, ax	;coeff += 2 * deltaX
 						jmp check_updatep_condition_l2
 						
 					coeff_greater_or_equal_zero_l2:
@@ -238,7 +238,7 @@
 						add cx, ax
 						add cx, ax
 						sub cx, bx
-						sub cx, bx		;coeff += 2 * (deltaY - deltaX)
+						sub cx, bx	;coeff += 2 * (deltaY - deltaX)
 						jmp check_updatep_condition_l2
 					
 				check_updatep_condition_l2:
@@ -263,47 +263,47 @@
 		pushf
 		__push_rect__ di
 		
-		mov cx, si						;cx <- fill_flag
+		mov cx, si			;cx <- fill_flag
 		
-		lea si, _temp_line				;si <- _temp_line ptr
+		lea si, _temp_line		;si <- _temp_line ptr
 			
 		mov al, [di].m_rColor
-		mov [si].m_lColor, al			;line_t.color = rect_t.color
+		mov [si].m_lColor, al		;line_t.color = rect_t.color
 			
 		mov ax, [di].m_y			
-		mov [si].m_y0, ax				;line_t.m_y0 = rect_t.m_y
+		mov [si].m_y0, ax		;line_t.m_y0 = rect_t.m_y
 			
 		add ax, [di].m_height		
-		mov [si].m_yEnd, ax				;line_t.m_yEnd = rect_t.m_y + rect_t.m_height
+		mov [si].m_yEnd, ax		;line_t.m_yEnd = rect_t.m_y + rect_t.m_height
 			
 		mov ax, [di].m_x
-		mov [si].m_x0, ax				;line_t.m_x0 = rect_t.m_x
-		mov [si].m_xEnd, ax				;line_t.m_xEnd = line_t.m_x0 = rect_t.m_x
+		mov [si].m_x0, ax		;line_t.m_x0 = rect_t.m_x
+		mov [si].m_xEnd, ax		;line_t.m_xEnd = line_t.m_x0 = rect_t.m_x
 		
-		cmp cx, 0						;check fill_flag != 0
+		cmp cx, 0			;check fill_flag != 0
 		jne filled_rect
 		
 		not_filled_rect:
 			xchg si, di
 			
-			call print_line				;printing left border
+			call print_line		;printing left border
 			
 			mov ax, [si].m_length
 			add [di].m_x0, ax
 			mov ax, [di].m_yEnd
 			mov [di].m_y0, ax
-			call print_line				;printing bottom border
+			call print_line		;printing bottom border
 			
 			mov ax, [si].m_height
 			sub [di].m_yEnd, ax
 			mov ax, [si].m_length
 			add [di].m_xEnd, ax
-			call print_line				;printing right border
+			call print_line		;printing right border
 			
 			sub [di].m_x0, ax
 			mov ax, [si].m_height
 			sub [di].m_y0, ax
-			call print_line				;printing top border
+			call print_line		;printing top border
 			
 			xchg si, di
 			
