@@ -3,9 +3,7 @@
 # EXAMPLE:  
 
 <p align="center">
-
-  <img width="460" height="300" src="[http://www.fillmurray.com/460/300](https://user-images.githubusercontent.com/108875469/177938553-4b0db45c-2ae5-4aa4-b4c9-909827ff1796.png)">
-
+ ![image](https://user-images.githubusercontent.com/108875469/177938553-4b0db45c-2ae5-4aa4-b4c9-909827ff1796.png)
 </p>
 
 
