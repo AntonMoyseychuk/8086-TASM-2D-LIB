@@ -25,7 +25,7 @@
 		m_xCent dw ?
 		m_yCent dw ?
 		
-		m_rad dw ?
+		m_radius dw ?
 		
 		m_cColor db ?
 	circle_t ends
@@ -44,9 +44,10 @@
 	;#                VARIABLES                #
 	;###########################################
 	
-	line line_t <10, 10, 110, 110, 01h>
-	rect1 rect_t <10, 10, 100, 100, 05h>
-	rect2 rect_t <12, 12, 40, 40, 0Ah>
+	line line_t <110, 150, 210, 50, 0Bh>
+	rect1 rect_t <110, 50, 100, 100, 04h>
+	rect2 rect_t <112, 52, 40, 40, 01h>
+	circle circle_t <185, 125, 24, 0Eh>
 	
 .code
 	;###########################################
@@ -54,44 +55,72 @@
 	;###########################################
 
 	;Utility macro to push a line to the stack
-	__push_line__ macro line
-		push [line]
-		push [line + 2]
-		push [line + 2 * 2]
-		push [line + 3 * 2]
-		push [line + 4 * 2]
+	;Arguments: address of line_t source object
+	__push_line__ macro ptr_line
+		push [ptr_line]
+		push [ptr_line + 2]
+		push [ptr_line + 2 * 2]
+		push [ptr_line + 3 * 2]
+		push [ptr_line + 4 * 2]
 	endm
+	
 	
 	;Utility macro to pop a line from the stack
-	__pop_line__ macro line
-		pop [line + 4 * 2]
-		pop [line + 3 * 2]
-		pop [line + 2 * 2]
-		pop [line + 2]
-		pop [line]
+	;Arguments: address of line_t destination object
+	__pop_line__ macro ptr_line
+		pop [ptr_line + 4 * 2]
+		pop [ptr_line + 3 * 2]
+		pop [ptr_line + 2 * 2]
+		pop [ptr_line + 2]
+		pop [ptr_line]
 	endm
+	
 	
 	;Utility macro to push a rectangular to the stack
-	__push_rect__ macro rect
-		push [rect]
-		push [rect + 2]
-		push [rect + 2 * 2]
-		push [rect + 3 * 2]
-		push [rect + 4 * 2]
+	;Arguments: address of rect_t source object
+	__push_rect__ macro ptr_rect
+		push [ptr_rect]
+		push [ptr_rect + 2]
+		push [ptr_rect + 2 * 2]
+		push [ptr_rect + 3 * 2]
+		push [ptr_rect + 4 * 2]
 	endm
+	
 	
 	;Utility macro to pop a rectangular from the stack
-	__pop_rect__ macro rect
-		pop [rect + 4 * 2]
-		pop [rect + 3 * 2]
-		pop [rect + 2 * 2]
-		pop [rect + 2]
-		pop [rect]
+	;Arguments: address of rect_t destination object
+	__pop_rect__ macro ptr_rect
+		pop [ptr_rect + 4 * 2]
+		pop [ptr_rect + 3 * 2]
+		pop [ptr_rect + 2 * 2]
+		pop [ptr_rect + 2]
+		pop [ptr_rect]
 	endm
 	
+	
+	;Utility macro to push a circle to the stack
+	;Arguments: address of circle_t source object
+	__push_circle__ macro ptr_circle
+		push [ptr_circle]
+		push [ptr_circle + 2]
+		push [ptr_circle + 2 * 2]
+		push [ptr_circle + 3 * 2]
+	endm
+	
+	
+	;Utility macro to pop a circle from the stack
+	;Arguments: address of circle_t destination object
+	__pop_circle__ macro ptr_circle
+		pop [ptr_circle + 3 * 2]
+		pop [ptr_circle + 2 * 2]
+		pop [ptr_circle + 2]
+		pop [ptr_circle]
+	endm
+	
+	
 	;Macro to set video mode
-	;Takes a video mode number as a parameter
-	__set_video_mode macro modeNumber
+	;Arguments: mode number
+	__set_video_mode__ macro modeNumber
 		push ax
 		
 		mov ax, modeNumber
@@ -101,9 +130,10 @@
 		pop ax
 	endm
 	
+	
 	;Macro for drawing a pixel
-	;Takes the coordinates of the pixel and its color as a parameter
-	__set_pixel macro x, y, color
+	;Arguments: coordinates of the pixel and its color
+	__set_pixel__ macro x, y, color
 		pusha
 		
 		mov cx, x
@@ -118,12 +148,14 @@
 		popa
 	endm
 	
-	
+	;###########################################
+	;#              ENTRY POINT                #
+	;###########################################
 	main proc
 		mov ax, @data
 		mov ds, ax	
 		
-		__set_video_mode 0Dh	    ;Color mode setting (320X200)
+		__set_video_mode__ 0Dh	    ;Color mode setting (320X200)
 		
 		update_loop:
 			lea di, rect1	    ;di <- ptr rect1
@@ -139,6 +171,10 @@
 			lea di, line	    ;di <- ptr line
 			call print_line
 			inc [di].m_lColor   ;Switch color to next
+			
+			lea di, circle
+			call print_circle
+			inc [di].m_cColor
 
 			mov ah, 01h	    ;Сharacter input function without echo
 			int 21h
@@ -146,7 +182,7 @@
 			cmp al, 1Bh	    ;Check for pressing the ESC key
 			jne update_loop
 		
-		__set_video_mode 03h	    ;Text mode setting (80X25)
+		__set_video_mode__ 03h	    ;Text mode setting (80X25)
 		
 		mov ah, 4Ch		    ;Transfer control to the operating system
 		int 21h
@@ -157,8 +193,9 @@
 	;#               PROCEDURES                #
 	;###########################################
 	
-	;Takes a pointer to a line_t object 
-	;in register di as a parameter
+	;Procedure that implements the Brazenham algorithm for a segment
+	;Arguments:
+	;	di <- address of line_t object
 	print_line proc
 		pusha
 		pushf
@@ -210,10 +247,10 @@
 				add cx, bx
 				sub cx, ax	;cx <- coeff = 2 * deltaY - deltaX
 			
-				l1:
-					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
+				printing_line_loop_1:
+					__set_pixel__ [di].m_x0, [di].m_y0, [di].m_lColor
 					
-					add [di].m_x0, dx	;x += xInc
+					add [di].m_x0, dx		;x += xInc
 			
 					cmp cx, 0
 					jl coeff_less_zero_l1
@@ -221,8 +258,8 @@
 					
 					coeff_less_zero_l1:
 						add cx, bx
-						add cx, bx	;coeff += 2 * deltaY
-						jmp check_updatep_condition_l1
+						add cx, bx		;coeff += 2 * deltaY
+						jmp check_update_condition_l1
 						
 					coeff_greater_or_equal_zero_l1:
 						add [di].m_y0, si	;y += yInc
@@ -230,15 +267,15 @@
 						add cx, bx
 						add cx, bx
 						sub cx, ax
-						sub cx, ax	;coeff += 2 * (deltaY - deltaX)
-						jmp check_updatep_condition_l1
+						sub cx, ax		;coeff += 2 * (deltaY - deltaX)
+						jmp check_update_condition_l1
 					
-				check_updatep_condition_l1:
+				check_update_condition_l1:
 					push ax
 					mov ax, [di].m_x0
 					cmp ax, [di].m_xEnd
 					pop ax
-					jne l1
+					jne printing_line_loop_1
 					jmp print_line_end
 			
 			DX_less_DY:
@@ -246,8 +283,8 @@
 				add cx, ax
 				sub cx, bx			;cx <- coeff = 2 * deltaX - deltaY
 				
-				l2:
-					__set_pixel [di].m_x0, [di].m_y0, [di].m_lColor
+				printing_line_loop_2:
+					__set_pixel__ [di].m_x0, [di].m_y0, [di].m_lColor
 					
 					add [di].m_y0, si	;y += yInc
 			
@@ -274,7 +311,7 @@
 					mov ax, [di].m_y0
 					cmp ax, [di].m_yEnd
 					pop ax
-					jne l2
+					jne printing_line_loop_2
 			
 		
 		print_line_end:	
@@ -285,8 +322,11 @@
 		ret
 	print_line endp
 	
-	;Takes a pointer to a rect_t object in the di register 
-	;and a fill flag in the si register as a parameter
+	
+	;Procedure that draws rectangular
+	;Arguments:
+	;	di <- address of rect_t object
+	;	si <- (0 - transparent, not 0 - non-transparent)
 	print_rect proc
 		pusha
 		pushf
@@ -359,5 +399,143 @@
 		popa
 		ret
 	print_rect endp
+	
+	
+	;Procedure that implements Brazenham algorithm for a circle
+	;Arguments:
+	;	di <- address of circle_t object
+	print_circle proc
+		pusha
+		pushf
+		__push_circle__ di
+		
+		mov ax, 0				;ax = x <- 0
+		mov bx, [di].m_radius	;bx = y <- circle_t.radius
+		mov cx, 1
+		sub cx, bx				;cx = coeff <- (1 - circle_t.radius)
+		
+		circle_printing_loop:
+			pusha
+			;Loading arguments into registers
+			mov si, [di].m_yCent
+			mov dx, ax
+			mov cx, bx
+			mov bl, [di].m_cColor
+			mov di, [di].m_xCent
+			call _circle_plot_points_
+			popa
+			
+			inc ax				;x++
+			
+			cmp cx, 0
+			jl coeff_less_zero_circle
+			jmp coeff_greater_or_equal_zero_circle
+			
+			coeff_less_zero_circle:
+				add cx, ax
+				add cx, ax
+				add cx, 3		;coeff += 2*x + 3
+				jmp check_update_condition_circle
+			
+			coeff_greater_or_equal_zero_circle:
+				dec bx			;y++
+				add cx, ax
+				add cx, ax
+				sub cx, bx
+				sub cx, bx
+				add cx, 4		;coeff += 2*x - 2*y + 4
+			
+			
+			check_update_condition_circle:
+			;if x <= y then go to start of the circle_printing_loop
+			cmp ax, bx
+			jle circle_printing_loop
+		
+		__pop_circle__ di
+		popf
+		popa
+		ret
+	print_circle endp
+	
+	
+	;Utility procedure that is used in the 
+	;Brazenhem algorithm for a circle.
+	;Arguments:
+	;	di <- xCenter
+	;	si <- yCenter
+	;	dx <- x
+	;	cx <- y
+	;	bx (bl) <- color
+	_circle_plot_points_ proc
+		pusha
+		pushf
+		
+		push di
+		push si
+		add di, dx
+		add si, cx
+		;di <- xCenter + x
+		;si <- yCenter + y
+		__set_pixel__ di, si, bl
+		
+		sub si, cx
+		sub si, cx
+		;di <- xCenter + x
+		;si <- yCenter - y
+		__set_pixel__ di, si, bl
+		
+		sub di, dx
+		sub di, dx
+		;di <- xCenter - x
+		;si <- yCenter - y 
+		__set_pixel__ di, si, bl
+		
+		add si, cx
+		add si, cx
+		;di <- xCenter - x
+		;si <- yCenter + y 
+		__set_pixel__ di, si, bl
+		
+		add di, dx
+		add di, dx
+		;di <- xCenter + x
+		;si <- yCenter + y 
+		__set_pixel__ di, si, bl
+		pop si
+		pop di
+		
+		
+		push di
+		push si 
+		add di, cx
+		add si, dx
+		;di <- xCenter + y
+		;si <- yCenter + x 
+		__set_pixel__ di, si, bl
+		
+		sub si, dx
+		sub si, dx
+		;di <- xCenter + y
+		;si <- yCenter - x 
+		__set_pixel__ di, si, bl
+		
+		sub di, cx
+		sub di, cx
+		;di <- xCenter - y
+		;si <- yCenter - x 
+		__set_pixel__ di, si, bl
+		
+		add si, dx
+		add si, dx
+		;di <- xCenter - y
+		;si <- yCenter - x 
+		__set_pixel__ di, si, bl
+		pop si
+		pop di
+		
+		popf
+		popa
+		ret
+	_circle_plot_points_ endp
 	
 end main
