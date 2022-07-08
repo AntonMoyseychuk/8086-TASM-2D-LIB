@@ -1,5 +1,8 @@
 # 8086-TASM-2D_LIB
 
+COPLETED TASKS:
+---------------
+
 EXAMPLE:
 --------
 
