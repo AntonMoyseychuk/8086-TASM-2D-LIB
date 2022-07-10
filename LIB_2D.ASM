@@ -17,9 +17,23 @@
 		m_lColor db ?
 	line_t ends
 	
-	;_temp_line is used to draw rectangles 
+	;_temp_line is used to draw other figures 
 	;Not intended for user use
 	_temp_line line_t <>
+	
+	
+	triangle_t struc
+		m_x0 dw ?
+		m_y0 dw ?
+		
+		m_x1 dw ?
+		m_y1 dw ?
+		
+		m_x2 dw ?
+		m_y2 dw ?
+		
+		m_tColor db ?
+	triangle_t ends
 	
 	circle_t struc
 		m_xCent dw ?
@@ -48,6 +62,7 @@
 	rect1 rect_t <110, 50, 100, 100, 04h>
 	rect2 rect_t <112, 52, 40, 40, 01h>
 	circle circle_t <185, 125, 24, 0Eh>
+	triangle triangle_t <185, 110,   200, 130,   170, 130,   0Dh>
 	
 .code
 	;###########################################
@@ -117,6 +132,31 @@
 		pop [ptr_circle]
 	endm
 	
+	;Utility macro to push a triangle to the stack
+	;Arguments: address of line_t source object
+	__push_triangle__ macro ptr_triangle
+		push [ptr_triangle]
+		push [ptr_triangle + 2]
+		push [ptr_triangle + 2 * 2]
+		push [ptr_triangle + 3 * 2]
+		push [ptr_triangle + 4 * 2]
+		push [ptr_triangle + 5 * 2]
+		push [ptr_triangle + 6 * 2]
+	endm
+	
+	
+	;Utility macro to pop a triangle from the stack
+	;Arguments: address of line_t destination object
+	__pop_triangle__ macro ptr_triangle
+		pop [ptr_triangle + 6 * 2]
+		pop [ptr_triangle + 5 * 2]
+		pop [ptr_triangle + 4 * 2]
+		pop [ptr_triangle + 3 * 2]
+		pop [ptr_triangle + 2 * 2]
+		pop [ptr_triangle + 2]
+		pop [ptr_triangle]
+	endm
+	
 	
 	;Macro to set video mode
 	;Arguments: mode number
@@ -172,9 +212,13 @@
 			call print_line
 			inc [di].m_lColor   ;Switch color to next
 			
-			lea di, circle
+			lea di, circle		;di <- ptr circle
 			call print_circle
-			inc [di].m_cColor
+			inc [di].m_cColor	;Switch color to next
+			
+			lea di, triangle	;di <- ptr triangle
+			call print_triangle
+			inc [di].m_tColor	;Switch color to next
 
 			mov ah, 01h	    ;Сharacter input function without echo
 			int 21h
@@ -321,6 +365,62 @@
 		popa
 		ret
 	print_line endp
+	
+	;Procedure that draws triangle
+	;Arguments:
+	;	di <- address of triangle_t object
+	print_triangle proc
+		pusha
+		pushf
+		__push_triangle__ di
+		
+		lea si, _temp_line
+		
+		mov ax, 0
+		mov al, [di].m_tColor
+		mov [si].m_lColor, al	;Line color setting
+		
+		mov ax, [di].m_x0
+		mov [si].m_x0, ax
+		
+		mov ax, [di].m_y0
+		mov [si].m_y0, ax
+		
+		mov ax, [di].m_x1
+		mov [si].m_xEnd, ax
+		
+		mov ax, [di].m_y1
+		mov [si].m_yEnd, ax
+		
+		xchg di, si
+		call print_line			;Printing (x0, y0, x1, y1) line
+		xchg di, si
+		
+		mov ax, [di].m_x2
+		mov [si].m_x0, ax
+		
+		mov ax, [di].m_y2
+		mov [si].m_y0, ax
+		
+		xchg di, si
+		call print_line			;Printing (x2, y2, x1, y1) line
+		xchg di, si
+		
+		mov ax, [di].m_x0
+		mov [si].m_xEnd, ax
+		
+		mov ax, [di].m_y0
+		mov [si].m_yEnd, ax
+		
+		xchg di, si
+		call print_line			;Printing (x2, y2, x1, y1) line
+		xchg di, si
+		
+		__pop_triangle__ di
+		popf
+		popa
+		ret
+	print_triangle endp
 	
 	
 	;Procedure that draws rectangular
