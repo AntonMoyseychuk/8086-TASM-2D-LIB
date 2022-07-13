@@ -4,9 +4,9 @@ COPLETED TASKS:
 ---------------
 
 1. Implemented the Bresenham algorithm for displaying a line
-2. Implemented the Bresenham algorithm for displaying a transparent circle
+2. Implemented the Bresenham algorithm for displaying a circle (transparent)
 3. Implemented the simple algorithm for displaying a rectangle (shaded and transparent)
-4. Implemented the simple algorithm for displaying a transparent triangle
+4. Implemented the simple algorithm for displaying a triangle (transparent)
 
 EXAMPLE:
 --------
