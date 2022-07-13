@@ -1,8 +1,13 @@
 .286
 .model small
-.stack 100h
 
-.data
+stk segment stack
+	db 100h dup (0)
+stk ends
+
+
+data segment
+
 	;###########################################
 	;#                STUCTURES                #
 	;###########################################
@@ -64,7 +69,12 @@
 	circle circle_t <185, 125, 24, 0Eh>
 	triangle triangle_t <185, 110,   200, 130,   170, 130,   0Dh>
 	
-.code
+data ends
+
+
+code segment
+	assume cs:code, ds:data
+	
 	;###########################################
 	;#                 MACROS                  #
 	;###########################################
@@ -192,7 +202,7 @@
 	;#              ENTRY POINT                #
 	;###########################################
 	main proc
-		mov ax, @data
+		mov ax, data
 		mov ds, ax	
 		
 		__set_video_mode__ 0Dh	    ;Color mode setting (320X200)
@@ -509,6 +519,54 @@
 		pushf
 		__push_circle__ di
 		
+		; mov ax, [di].m_radius
+		; mul ax
+		; push ax						;[sp + 2] <- radius^2
+		
+		; mov bx, [di].m_xCent
+		; sub bx, [di].m_radius		;bx = x <- (xCenter - radius)
+		; push bx						;[sp] <- (xCenter - radius)
+		
+		; mov dx, [di].m_yCent
+		; sub dx, [di].m_radius		;dx = y <- (yCenter - radius)
+		
+		; mov bp, sp					;bp <- sp
+		; mov cx, [di].m_radius
+		; add cx, [di].m_radius
+		; print_filled_circle_y:
+			; push cx					;[bp - 1*2] <- cx
+			; mov cx, [di].m_radius
+			; add cx, [di].m_radius
+			
+			; mov bx, [bp]			;bx <- (xCenter - radius)
+			; print_filled_circle_x:
+				; mov ax, [di].m_xCent
+				; sub ax, bx
+				; push dx
+				; mul ax
+				; pop dx
+				; push ax				;[bp - 2*2] <- (xCenter - x)^2
+				
+				; mov ax, [di].m_yCent
+				; sub ax, dx
+				; push dx
+				; mul ax				;ax <- (yCenter - y)^2
+				; pop dx
+				
+				; add ax, [bp - 2*2]	;ax <- (xCenter - x)^2 + (yCenter - y)^2
+				; cmp ax, [bp + 1*2]	;if ax <= radius^2
+				; jg not_put_pix
+					
+					; __set_pixel__ bx, dx, [di].m_cColor
+					
+				; not_put_pix:
+				; inc bx
+				; loop print_filled_circle_x
+			
+			; pop cx
+			; inc dx
+			; loop print_filled_circle_y
+		
 		mov ax, 0				;ax = x <- 0
 		mov bx, [di].m_radius	;bx = y <- circle_t.radius
 		mov cx, 1
@@ -637,5 +695,6 @@
 		popa
 		ret
 	_circle_plot_points_ endp
-	
-end main
+code ends
+
+	end main
