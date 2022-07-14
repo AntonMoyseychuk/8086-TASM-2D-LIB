@@ -625,7 +625,7 @@ code segment
 					cmp ax, [bp + 1*2]	;if ax <= radius^2
 					
 					pop ax
-					jg not_put_pix
+					jge not_put_pix
 						
 						__set_pixel__ bx, dx, [di].m_cColor
 						
