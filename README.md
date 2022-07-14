@@ -4,7 +4,7 @@ COPLETED TASKS:
 ---------------
 
 1. Implemented the Bresenham algorithm for displaying a line.
-2. Implemented the Bresenham algorithm for displaying a circle (transparent), square property and Pitot's theorem for displaying a circle (shaded).
+2. Implemented the Bresenham algorithm for displaying a transparent circle and square property and Pitot's theorem for displaying a shaded circle.
 3. Implemented the simple algorithm for displaying a rectangle (shaded and transparent).
 4. Implemented the simple algorithm for displaying a triangle (transparent).
 
