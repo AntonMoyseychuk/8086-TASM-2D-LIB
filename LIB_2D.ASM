@@ -63,10 +63,11 @@ data segment
 	;#                VARIABLES                #
 	;###########################################
 	
-	line line_t <110, 150, 210, 50, 0Bh>
-	rect1 rect_t <110, 50, 100, 100, 04h>
-	rect2 rect_t <112, 52, 40, 40, 01h>
-	circle circle_t <185, 125, 24, 0Eh>
+	line line_t <110, 150, 210, 50, 0Eh>
+	rect1 rect_t <110, 50, 100, 100, 07h>
+	rect2 rect_t <112, 52, 40, 40, 04h>
+	circle1 circle_t <185, 125, 24, 01h>
+	circle2 circle_t <185, 125, 15, 0Bh>
 	triangle triangle_t <185, 110,   200, 130,   170, 130,   0Dh>
 	
 data ends
@@ -201,7 +202,7 @@ code segment
 	;###########################################
 	;#              ENTRY POINT                #
 	;###########################################
-	main proc
+	main:
 		mov ax, data
 		mov ds, ax	
 		
@@ -222,13 +223,19 @@ code segment
 			call print_line
 			inc [di].m_lColor   ;Switch color to next
 			
-			lea di, circle		;di <- ptr circle
+			lea di, circle1		;di <- ptr circle1
+			mov si, 0
 			call print_circle
 			inc [di].m_cColor	;Switch color to next
 			
-			lea di, triangle	;di <- ptr triangle
-			call print_triangle
-			inc [di].m_tColor	;Switch color to next
+			lea di, circle2		;di <- ptr circle2
+			mov si, 1
+			call print_circle
+			inc [di].m_cColor	;Switch color to next
+			
+			; lea di, triangle	;di <- ptr triangle
+			; call print_triangle
+			; inc [di].m_tColor	;Switch color to next
 
 			mov ah, 01h	    ;Сharacter input function without echo
 			int 21h
@@ -240,7 +247,6 @@ code segment
 		
 		mov ah, 4Ch		    ;Transfer control to the operating system
 		int 21h
-	endp
 
 	
 	;###########################################
@@ -436,7 +442,7 @@ code segment
 	;Procedure that draws rectangular
 	;Arguments:
 	;	di <- address of rect_t object
-	;	si <- (0 - transparent, not 0 - non-transparent)
+	;	si <- (0 - transparent, not 0 - shaded)
 	print_rect proc
 		pusha
 		pushf
@@ -460,9 +466,9 @@ code segment
 		mov [si].m_xEnd, ax			;line_t.m_xEnd = line_t.m_x0 = rect_t.m_x
 		
 		cmp cx, 0				;check fill_flag != 0
-		jne filled_rect
+		jne shaded_rect
 		
-		not_filled_rect:
+		transparent_rect:
 			xchg si, di
 			
 			call print_line			;printing left border
@@ -488,7 +494,7 @@ code segment
 			
 			jmp print_rect_end
 		
-		filled_rect:
+		shaded_rect:
 			
 			xchg si, di
 			mov cx, [si].m_length
@@ -514,101 +520,127 @@ code segment
 	;Procedure that implements Brazenham algorithm for a circle
 	;Arguments:
 	;	di <- address of circle_t object
+	;	si <- (0 - transparent, not 0 - shaded)
 	print_circle proc
 		pusha
 		pushf
 		__push_circle__ di
 		
-		; mov ax, [di].m_radius
-		; mul ax
-		; push ax						;[sp + 2] <- radius^2
+		cmp si, 0
+		jne shaded_circle
 		
-		; mov bx, [di].m_xCent
-		; sub bx, [di].m_radius		;bx = x <- (xCenter - radius)
-		; push bx						;[sp] <- (xCenter - radius)
-		
-		; mov dx, [di].m_yCent
-		; sub dx, [di].m_radius		;dx = y <- (yCenter - radius)
-		
-		; mov bp, sp					;bp <- sp
-		; mov cx, [di].m_radius
-		; add cx, [di].m_radius
-		; print_filled_circle_y:
-			; push cx					;[bp - 1*2] <- cx
-			; mov cx, [di].m_radius
-			; add cx, [di].m_radius
+		transparent_circle:
+			mov ax, 0				;ax = x <- 0
+			mov bx, [di].m_radius	;bx = y <- circle_t.radius
+			mov cx, 1
+			sub cx, bx				;cx = coeff <- (1 - circle_t.radius)
 			
-			; mov bx, [bp]			;bx <- (xCenter - radius)
-			; print_filled_circle_x:
-				; mov ax, [di].m_xCent
-				; sub ax, bx
-				; push dx
-				; mul ax
-				; pop dx
-				; push ax				;[bp - 2*2] <- (xCenter - x)^2
+			circle_printing_loop:
+				pusha
+				;Loading arguments into registers
+				mov si, [di].m_yCent
+				mov dx, ax
+				mov cx, bx
+				mov bl, [di].m_cColor
+				mov di, [di].m_xCent
+				call _circle_plot_points_
+				popa
 				
-				; mov ax, [di].m_yCent
-				; sub ax, dx
-				; push dx
-				; mul ax				;ax <- (yCenter - y)^2
-				; pop dx
+				inc ax				;x++
 				
-				; add ax, [bp - 2*2]	;ax <- (xCenter - x)^2 + (yCenter - y)^2
-				; cmp ax, [bp + 1*2]	;if ax <= radius^2
-				; jg not_put_pix
+				cmp cx, 0
+				jl coeff_less_zero_circle
+				jmp coeff_greater_or_equal_zero_circle
+				
+				coeff_less_zero_circle:
+					add cx, ax
+					add cx, ax
+					add cx, 3		;coeff += 2*x + 3
+					jmp check_update_condition_circle
+				
+				coeff_greater_or_equal_zero_circle:
+					dec bx			;y++
+					add cx, ax
+					add cx, ax
+					sub cx, bx
+					sub cx, bx
+					add cx, 4		;coeff += 2*x - 2*y + 4
+				
+				check_update_condition_circle:
+				;if x <= y then go to start of the circle_printing_loop
+				cmp ax, bx
+				jle circle_printing_loop
+				
+			jmp print_circle_end
+		
+		shaded_circle:
+			mov ax, [di].m_radius
+			mul ax
+			push ax						;[sp + 2] <- radius^2
+			
+			mov bx, [di].m_xCent
+			sub bx, [di].m_radius		;bx = x <- (xCenter - radius)
+			push bx						;[sp] <- (xCenter - radius)
+			
+			mov dx, [di].m_yCent
+			sub dx, [di].m_radius		;dx = y <- (yCenter - radius)
+			
+			mov bp, sp					;bp <- sp
+			mov cx, [di].m_radius
+			add cx, [di].m_radius
+			inc cx
+			print_filled_circle_y:
+				push cx					;[bp - 1*2] <- cx
+				mov cx, [di].m_radius
+				add cx, [di].m_radius
+				inc cx
+				
+				mov bx, [bp]			;bx <- (xCenter - radius)
+				print_filled_circle_x:
+					mov ax, [di].m_xCent
+					sub ax, bx
+					cmp ax, 0
+					jge abs_deltaX_circle
+						neg ax
 					
-					; __set_pixel__ bx, dx, [di].m_cColor
+					abs_deltaX_circle: 
+					push dx
+					mul ax
+					pop dx
 					
-				; not_put_pix:
-				; inc bx
-				; loop print_filled_circle_x
-			
-			; pop cx
-			; inc dx
-			; loop print_filled_circle_y
+					push ax				;[bp - 2*2] <- (xCenter - x)^2
+					
+					mov ax, [di].m_yCent
+					sub ax, dx
+					cmp ax, 0
+					jge abs_deltaY_circle
+						neg ax
+					
+					abs_deltaY_circle:
+					push dx
+					mul ax				;ax <- (yCenter - y)^2
+					pop dx
+					
+					add ax, [bp - 2*2]	;ax <- (xCenter - x)^2 + (yCenter - y)^2
+					cmp ax, [bp + 1*2]	;if ax <= radius^2
+					
+					pop ax
+					jg not_put_pix
+						
+						__set_pixel__ bx, dx, [di].m_cColor
+						
+					not_put_pix:
+					inc bx
+					loop print_filled_circle_x
+				
+				pop cx
+				inc dx
+				loop print_filled_circle_y
+				
+				pop bx
+				pop ax
 		
-		mov ax, 0				;ax = x <- 0
-		mov bx, [di].m_radius	;bx = y <- circle_t.radius
-		mov cx, 1
-		sub cx, bx				;cx = coeff <- (1 - circle_t.radius)
-		
-		circle_printing_loop:
-			pusha
-			;Loading arguments into registers
-			mov si, [di].m_yCent
-			mov dx, ax
-			mov cx, bx
-			mov bl, [di].m_cColor
-			mov di, [di].m_xCent
-			call _circle_plot_points_
-			popa
-			
-			inc ax				;x++
-			
-			cmp cx, 0
-			jl coeff_less_zero_circle
-			jmp coeff_greater_or_equal_zero_circle
-			
-			coeff_less_zero_circle:
-				add cx, ax
-				add cx, ax
-				add cx, 3		;coeff += 2*x + 3
-				jmp check_update_condition_circle
-			
-			coeff_greater_or_equal_zero_circle:
-				dec bx			;y++
-				add cx, ax
-				add cx, ax
-				sub cx, bx
-				sub cx, bx
-				add cx, 4		;coeff += 2*x - 2*y + 4
-			
-			
-			check_update_condition_circle:
-			;if x <= y then go to start of the circle_printing_loop
-			cmp ax, bx
-			jle circle_printing_loop
-		
+		print_circle_end:
 		__pop_circle__ di
 		popf
 		popa
