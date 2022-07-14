@@ -576,21 +576,21 @@ code segment
 		shaded_circle:
 			mov ax, [di].m_radius
 			mul ax
-			push ax						;[sp + 2] <- radius^2
+			push ax					;[sp + 2] <- radius^2
 			
 			mov bx, [di].m_xCent
-			sub bx, [di].m_radius		;bx = x <- (xCenter - radius)
-			push bx						;[sp] <- (xCenter - radius)
+			sub bx, [di].m_radius			;bx = x <- (xCenter - radius)
+			push bx					;[sp] <- (xCenter - radius)
 			
 			mov dx, [di].m_yCent
-			sub dx, [di].m_radius		;dx = y <- (yCenter - radius)
+			sub dx, [di].m_radius			;dx = y <- (yCenter - radius)
 			
-			mov bp, sp					;bp <- sp
+			mov bp, sp				;bp <- sp
 			mov cx, [di].m_radius
 			add cx, [di].m_radius
 			inc cx
 			print_filled_circle_y:
-				push cx					;[bp - 1*2] <- cx
+				push cx				;[bp - 1*2] <- cx
 				mov cx, [di].m_radius
 				add cx, [di].m_radius
 				inc cx
@@ -608,7 +608,7 @@ code segment
 					mul ax
 					pop dx
 					
-					push ax				;[bp - 2*2] <- (xCenter - x)^2
+					push ax			;[bp - 2*2] <- (xCenter - x)^2
 					
 					mov ax, [di].m_yCent
 					sub ax, dx
@@ -618,7 +618,7 @@ code segment
 					
 					abs_deltaY_circle:
 					push dx
-					mul ax				;ax <- (yCenter - y)^2
+					mul ax			;ax <- (yCenter - y)^2
 					pop dx
 					
 					add ax, [bp - 2*2]	;ax <- (xCenter - x)^2 + (yCenter - y)^2
