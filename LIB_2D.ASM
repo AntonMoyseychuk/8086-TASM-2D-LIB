@@ -579,31 +579,32 @@ code segment
 			push ax					;[sp + 2] <- radius^2
 			
 			mov bx, [di].m_xCent
-			sub bx, [di].m_radius			;bx = x <- (xCenter - radius)
-			push bx					;[sp] <- (xCenter - radius)
+			sub bx, [di].m_radius			
+			inc bx					;bx = x <- (xCenter - radius + 1)
+			push bx					;[sp] <- (xCenter - radius + 1)
 			
 			mov dx, [di].m_yCent
-			sub dx, [di].m_radius			;dx = y <- (yCenter - radius)
+			sub dx, [di].m_radius
+			inc dx					;dx = y <- (yCenter - radius + 1)
 			
 			mov bp, sp				;bp <- sp
+			
 			mov cx, [di].m_radius
 			add cx, [di].m_radius
-			inc cx
 			print_filled_circle_y:
 				push cx				;[bp - 1*2] <- cx
 				mov cx, [di].m_radius
 				add cx, [di].m_radius
-				inc cx
 				
-				mov bx, [bp]			;bx <- (xCenter - radius)
+				mov bx, [bp]			;bx <- (xCenter - radius + 1)
 				print_filled_circle_x:
 					mov ax, [di].m_xCent
 					sub ax, bx
 					cmp ax, 0
-					jge abs_deltaX_circle
-						neg ax
+					jge positive_deltaX_circle
+						neg ax		;if ax < 0 then ax = -ax
 					
-					abs_deltaX_circle: 
+					positive_deltaX_circle: 
 					push dx
 					mul ax
 					pop dx
@@ -613,20 +614,19 @@ code segment
 					mov ax, [di].m_yCent
 					sub ax, dx
 					cmp ax, 0
-					jge abs_deltaY_circle
-						neg ax
+					jge positive_deltaY_circle
+						neg ax		;if ax < 0 then ax = -ax
 					
-					abs_deltaY_circle:
+					positive_deltaY_circle:
 					push dx
 					mul ax			;ax <- (yCenter - y)^2
 					pop dx
 					
 					add ax, [bp - 2*2]	;ax <- (xCenter - x)^2 + (yCenter - y)^2
-					cmp ax, [bp + 1*2]	;if ax <= radius^2
+					cmp ax, [bp + 1*2]	;if ax < radius^2
 					
 					pop ax
 					jge not_put_pix
-						
 						__set_pixel__ bx, dx, [di].m_cColor
 						
 					not_put_pix:
