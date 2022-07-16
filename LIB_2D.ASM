@@ -592,38 +592,33 @@ code segment
 			mov cx, [di].m_radius
 			add cx, [di].m_radius
 			print_filled_circle_y:
-				push cx				;[bp - 1*2] <- cx
+				push cx					;[bp - 1*2] <- cx
 				mov cx, [di].m_radius
 				add cx, [di].m_radius
 				
-				mov bx, [bp]			;bx <- (xCenter - radius + 1)
+				mov bx, [bp]				;bx <- (xCenter - radius + 1)
 				print_filled_circle_x:
 					mov ax, [di].m_xCent
 					sub ax, bx
 					cmp ax, 0
 					jge positive_deltaX_circle
-						neg ax		;if ax < 0 then ax = -ax
+						neg ax			;if ax < 0 then ax = -ax
 					
 					positive_deltaX_circle: 
-					push dx
-					mul ax
-					pop dx
-					
-					push ax			;[bp - 2*2] <- (xCenter - x)^2
+					mul al
+					push ax				;[bp - 2*2] <- (xCenter - x)^2
 					
 					mov ax, [di].m_yCent
 					sub ax, dx
 					cmp ax, 0
 					jge positive_deltaY_circle
-						neg ax		;if ax < 0 then ax = -ax
+						neg ax			;if ax < 0 then ax = -ax
 					
 					positive_deltaY_circle:
-					push dx
-					mul ax			;ax <- (yCenter - y)^2
-					pop dx
+					mul al				;ax <- (yCenter - y)^2
 					
-					add ax, [bp - 2*2]	;ax <- (xCenter - x)^2 + (yCenter - y)^2
-					cmp ax, [bp + 1*2]	;if ax < radius^2
+					add ax, [bp - 2*2]		;ax <- (xCenter - x)^2 + (yCenter - y)^2
+					cmp ax, [bp + 1*2]		;if ax < radius^2
 					
 					pop ax
 					jge not_put_pix
