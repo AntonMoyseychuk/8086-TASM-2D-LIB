@@ -72,10 +72,6 @@ data segment
 	
 data ends
 
-
-code segment
-	assume cs:code, ds:data
-	
 	;###########################################
 	;#                 MACROS                  #
 	;###########################################
@@ -198,6 +194,9 @@ code segment
 		
 		popa
 	endm
+
+entry_point_seg segment
+	assume cs:entry_point_seg, ds:data
 	
 	;###########################################
 	;#              ENTRY POINT                #
@@ -211,33 +210,33 @@ code segment
 		update_loop:
 			lea di, rect1	    ;di <- ptr rect1
 			mov si, 0	    ;si <- fill mode
-			call print_rect
+			call far ptr print_rect
 			inc [di].m_rColor   ;Switch color to next
 			
 			lea di, rect2	    ;di <- ptr rect2
 			mov si, 1           ;si <- fill mode
-			call print_rect     
+			call far ptr print_rect     
 			inc [di].m_rColor   ;Switch color to next
 			
 			lea di, line	    ;di <- ptr line
-			call print_line
+			call far ptr print_line
 			inc [di].m_lColor   ;Switch color to next
 			
 			lea di, circle1		;di <- ptr circle1
 			mov si, 0
-			call print_circle
+			call far ptr print_circle
 			inc [di].m_cColor	;Switch color to next
 			
 			lea di, circle2		;di <- ptr circle2
 			mov si, 1
-			call print_circle
+			call far ptr print_circle
 			inc [di].m_cColor	;Switch color to next
 			
 			; lea di, triangle	;di <- ptr triangle
-			; call print_triangle
+			; call far ptr print_triangle
 			; inc [di].m_tColor	;Switch color to next
 
-			mov ah, 01h	    ;Сharacter input function without echo
+			mov ah, 07h	    ;Сharacter input function without echo
 			int 21h
 			
 			cmp al, 1Bh	    ;Check for pressing the ESC key
@@ -247,7 +246,11 @@ code segment
 		
 		mov ah, 4Ch		    ;Transfer control to the operating system
 		int 21h
+		
+entry_point_seg ends
 
+lib2d_code_seg segment
+	assume cs:lib2d_code_seg, ds:data
 	
 	;###########################################
 	;#               PROCEDURES                #
@@ -256,7 +259,7 @@ code segment
 	;Procedure that implements the Brazenham algorithm for a segment
 	;Arguments:
 	;	di <- address of line_t object
-	print_line proc
+	print_line proc far
 		pusha
 		pushf
 		__push_line__ di
@@ -385,7 +388,7 @@ code segment
 	;Procedure that draws triangle
 	;Arguments:
 	;	di <- address of triangle_t object
-	print_triangle proc
+	print_triangle proc far
 		pusha
 		pushf
 		__push_triangle__ di
@@ -443,7 +446,7 @@ code segment
 	;Arguments:
 	;	di <- address of rect_t object
 	;	si <- (0 - transparent, not 0 - shaded)
-	print_rect proc
+	print_rect proc far
 		pusha
 		pushf
 		__push_rect__ di
@@ -517,11 +520,91 @@ code segment
 	print_rect endp
 	
 	
+	;Utility procedure that is used in the 
+	;Brazenhem algorithm for a circle.
+	;Arguments:
+	;	di <- xCenter
+	;	si <- yCenter
+	;	dx <- x
+	;	cx <- y
+	;	bx (bl) <- color
+	_circle_plot_points_ proc far
+		pusha
+		pushf
+		
+		push di
+		push si
+		add di, dx
+		add si, cx
+		;di <- xCenter + x
+		;si <- yCenter + y
+		__set_pixel__ di, si, bl
+		
+		sub si, cx
+		sub si, cx
+		;di <- xCenter + x
+		;si <- yCenter - y
+		__set_pixel__ di, si, bl
+		
+		sub di, dx
+		sub di, dx
+		;di <- xCenter - x
+		;si <- yCenter - y 
+		__set_pixel__ di, si, bl
+		
+		add si, cx
+		add si, cx
+		;di <- xCenter - x
+		;si <- yCenter + y 
+		__set_pixel__ di, si, bl
+		
+		add di, dx
+		add di, dx
+		;di <- xCenter + x
+		;si <- yCenter + y 
+		__set_pixel__ di, si, bl
+		pop si
+		pop di
+		
+		
+		push di
+		push si 
+		add di, cx
+		add si, dx
+		;di <- xCenter + y
+		;si <- yCenter + x 
+		__set_pixel__ di, si, bl
+		
+		sub si, dx
+		sub si, dx
+		;di <- xCenter + y
+		;si <- yCenter - x 
+		__set_pixel__ di, si, bl
+		
+		sub di, cx
+		sub di, cx
+		;di <- xCenter - y
+		;si <- yCenter - x 
+		__set_pixel__ di, si, bl
+		
+		add si, dx
+		add si, dx
+		;di <- xCenter - y
+		;si <- yCenter - x 
+		__set_pixel__ di, si, bl
+		pop si
+		pop di
+		
+		popf
+		popa
+		ret
+	_circle_plot_points_ endp
+	
 	;Procedure that implements Brazenham algorithm for a circle
 	;Arguments:
 	;	di <- address of circle_t object
 	;	si <- (0 - transparent, not 0 - shaded)
-	print_circle proc
+	print_circle proc far
 		pusha
 		pushf
 		__push_circle__ di
@@ -642,86 +725,6 @@ code segment
 		ret
 	print_circle endp
 	
-	
-	;Utility procedure that is used in the 
-	;Brazenhem algorithm for a circle.
-	;Arguments:
-	;	di <- xCenter
-	;	si <- yCenter
-	;	dx <- x
-	;	cx <- y
-	;	bx (bl) <- color
-	_circle_plot_points_ proc
-		pusha
-		pushf
-		
-		push di
-		push si
-		add di, dx
-		add si, cx
-		;di <- xCenter + x
-		;si <- yCenter + y
-		__set_pixel__ di, si, bl
-		
-		sub si, cx
-		sub si, cx
-		;di <- xCenter + x
-		;si <- yCenter - y
-		__set_pixel__ di, si, bl
-		
-		sub di, dx
-		sub di, dx
-		;di <- xCenter - x
-		;si <- yCenter - y 
-		__set_pixel__ di, si, bl
-		
-		add si, cx
-		add si, cx
-		;di <- xCenter - x
-		;si <- yCenter + y 
-		__set_pixel__ di, si, bl
-		
-		add di, dx
-		add di, dx
-		;di <- xCenter + x
-		;si <- yCenter + y 
-		__set_pixel__ di, si, bl
-		pop si
-		pop di
-		
-		
-		push di
-		push si 
-		add di, cx
-		add si, dx
-		;di <- xCenter + y
-		;si <- yCenter + x 
-		__set_pixel__ di, si, bl
-		
-		sub si, dx
-		sub si, dx
-		;di <- xCenter + y
-		;si <- yCenter - x 
-		__set_pixel__ di, si, bl
-		
-		sub di, cx
-		sub di, cx
-		;di <- xCenter - y
-		;si <- yCenter - x 
-		__set_pixel__ di, si, bl
-		
-		add si, dx
-		add si, dx
-		;di <- xCenter - y
-		;si <- yCenter - x 
-		__set_pixel__ di, si, bl
-		pop si
-		pop di
-		
-		popf
-		popa
-		ret
-	_circle_plot_points_ endp
-code ends
+lib2d_code_seg ends
 
 	end main
