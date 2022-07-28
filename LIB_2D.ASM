@@ -205,7 +205,7 @@ entry_point_seg segment
 		mov ax, data
 		mov ds, ax	
 		
-		__set_video_mode__ 0Dh	    ;Color mode setting (320X200)
+		__set_video_mode__ 13h	    ;Color mode setting (320X200, 256 colors)
 		
 		update_loop:
 			lea di, rect1	    ;di <- ptr rect1
@@ -244,7 +244,7 @@ entry_point_seg segment
 		
 		__set_video_mode__ 03h	    ;Text mode setting (80X25)
 		
-		mov ah, 4Ch		    ;Transfer control to the operating system
+		mov ax, 4C00h		    ;Transfer control to the operating system
 		int 21h
 		
 entry_point_seg ends
